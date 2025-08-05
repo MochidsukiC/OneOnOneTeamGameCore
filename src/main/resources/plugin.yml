@@ -1,0 +1,4 @@
+name: OneOnOneTeamGameCore
+version: '1.0-SNAPSHOT'
+main: jp.houlab.mochidsuki.oneOnOneTeamGameCore.OneOnOneTeamGameCoreMain
+api-version: '1.20'
