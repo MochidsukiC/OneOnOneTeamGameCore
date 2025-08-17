@@ -1,20 +1,23 @@
 package jp.houlab.mochidsuki.oneOnOneTeamGameCore.spawnPoint;
 
 import jp.houlab.mochidsuki.oneOnOneTeamGameCore.TeamProfile;
-import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Display;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.TextDisplay;
 
+import javax.annotation.Nullable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static jp.houlab.mochidsuki.oneOnOneTeamGameCore.OneOnOneTeamGameCoreMain.config;
+import static jp.houlab.mochidsuki.oneOnOneTeamGameCore.OneOnOneTeamGameCoreMain.plugin;
 
 public class SpawnPointProfile {
-    final static Map<String , SpawnPointProfile> spawnPointProfileMap = new HashMap<>();
+    public final static Map<String , SpawnPointProfile> SpawnPointProfileMap = new HashMap<>();
 
 
     public String getName() {
@@ -26,6 +29,7 @@ public class SpawnPointProfile {
     }
 
     public boolean isEnable() {
+        if(isMasterSpawnPoint()) return true;
         return enable;
     }
 
@@ -52,24 +56,48 @@ public class SpawnPointProfile {
     private final SpawnPointHandler spawnPointHandler;
     private int score = 0;
     private TeamProfile owner;
-    private TextDisplay textDisplay;
+
+    public TextDisplay getTextDisplay() {
+        return textDisplay;
+    }
+
+    private final TextDisplay textDisplay;
+
+    public boolean isMasterSpawnPoint() {
+        return isMasterSpawnPoint;
+    }
+
+    public void setMasterSpawnPoint(boolean masterSpawnPoint,TeamProfile teamProfile) {
+        isMasterSpawnPoint = masterSpawnPoint;
+        owner = teamProfile;
+    }
+
+    private boolean isMasterSpawnPoint = false;
+
 
     public SpawnPointProfile(String name, Location location, boolean enable){
         this.name = name;
         this.enable = enable;
         this.location = location;
-        spawnPointProfileMap.put(name, this);
+
+        SpawnPointProfileMap.put(name, this);
+
         spawnPointHandler = new SpawnPointHandler(this);
 
-        this.textDisplay = location.getWorld().spawn(location, TextDisplay.class);
+        for(Entity e : location.clone().add(0.5,2,0.5).getNearbyEntitiesByType(TextDisplay.class,4)){
+            e.getLocation().getChunk().load();
+            if(e.getScoreboardTags().contains("SpawnPointBar"))e.remove();
+        }
+        this.textDisplay = location.clone().add(0.5,2,0.5).getWorld().spawn(location.clone().add(0.5,2,0.5), TextDisplay.class);
         textDisplay.setBillboard(Display.Billboard.CENTER);
+        textDisplay.addScoreboardTag("SpawnPointBar");
     }
     public SpawnPointProfile(Location location){
-        this("SpawnPoint"+spawnPointProfileMap.keySet().size(),location,true);
+        this("SpawnPoint"+ SpawnPointProfileMap.keySet().size(),location,true);
     }
 
     public SpawnPointProfile(String name){
-
+        this.name = name;
         Location location = null;
         try{
             List<Integer> i = config.getIntegerList("SpawnPointLocation."+name);
@@ -77,9 +105,23 @@ public class SpawnPointProfile {
         }catch(Exception e){
             throw new IllegalArgumentException("SpawnPointLocation."+name+".Core is required");
         }
+        this.location = location;
+        this.enable = false;
 
-        this(name,location,true);
+
+        SpawnPointProfileMap.put(name, this);
+
+        spawnPointHandler = new SpawnPointHandler(this);
+
+        for(Entity e : location.clone().add(0.5,2,0.5).getNearbyEntitiesByType(TextDisplay.class,4)){
+            e.getLocation().getChunk().load();
+            if(e.getScoreboardTags().contains("SpawnPointBar"))e.remove();
+        }
+        this.textDisplay = location.clone().add(0.5,2,0.5).getWorld().spawn(location.clone().add(0.5,2,0.5), TextDisplay.class);
+        textDisplay.setBillboard(Display.Billboard.CENTER);
+        textDisplay.addScoreboardTag("SpawnPointBar");
     }
+
 
     /**
      * スポーンポイントの所有スコアを加算する。
@@ -89,6 +131,7 @@ public class SpawnPointProfile {
      */
     public void addScore(int i,TeamProfile teamProfile){
         if(teamProfile == null) throw new NullPointerException("teamProfile is null");
+        if(isMasterSpawnPoint() || !isEnable()) return;
 
         if(owner == null){
             owner = teamProfile;
@@ -107,15 +150,29 @@ public class SpawnPointProfile {
             }
         }
     }
-    public boolean isOwned(TeamProfile teamProfile){
-        if(teamProfile == null) return false;
-        return teamProfile.equals(owner) && score >= config.getInt("SpawnScoreThreshold");
+    public boolean isOwned(@Nullable TeamProfile teamProfile){
+        if(teamProfile == null || !isEnable()) return false;
+        return teamProfile.equals(owner) && (isMasterSpawnPoint() || score >= config.getInt("SpawnScoreThreshold"));
     }
-    public TeamProfile getOwner(){
+    public @Nullable TeamProfile getOwner(){
         return owner;
     }
     public void setOwner(TeamProfile teamProfile){
         owner = teamProfile;
     }
 
+    public void reset(){
+        if(isMasterSpawnPoint()) return;
+        owner = null;
+        score = 0;
+        textDisplay.text(Component.text(""));
+    }
+
+    public void remove(){
+        textDisplay.remove();
+        enable = false;
+        SpawnPointProfileMap.remove(name);
+    }
+
 }
+

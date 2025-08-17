@@ -1,5 +1,7 @@
 package jp.houlab.mochidsuki.oneOnOneTeamGameCore.ui;
 
+import jp.houlab.mochidsuki.oneOnOneTeamGameCore.TeamProfile;
+import jp.houlab.mochidsuki.oneOnOneTeamGameCore.spawnPoint.SpawnPointProfile;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -12,6 +14,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import static jp.houlab.mochidsuki.oneOnOneTeamGameCore.OneOnOneTeamGameCoreMain.config;
+import static jp.houlab.mochidsuki.oneOnOneTeamGameCore.spawnPoint.SpawnPointProfile.SpawnPointProfileMap;
 
 public class SpawnTeleportCUI {
     /**
@@ -20,7 +23,10 @@ public class SpawnTeleportCUI {
      */
     public static void sendSpawnPointCui(Player player) {
         // 1. config.ymlからCUIレイアウトをリストとして読み込む
-        List<String> layoutLines = config.getStringList("cui-layout");
+        TeamProfile teamProfile = TeamProfile.getTeamProfileFromPlayer(player);
+        if(teamProfile == null) return;
+
+        List<String> layoutLines = config.getStringList("SpawnPointCUI."+teamProfile.getSiteProfile().getName());
 
         if (layoutLines.isEmpty()) {
             player.sendMessage(Component.text("CUIのレイアウトがconfig.ymlに設定されていません。", NamedTextColor.RED));
@@ -55,10 +61,17 @@ public class SpawnTeleportCUI {
             if (placeholderPattern.matcher(part).matches()) {
                 // --- partがプレースホルダー "[n]" の場合 ---
                 // 数字部分 "n" を抽出
-                final String number = part.replaceAll("[\\[\\]]", "");
+                final String id = part.replaceAll("[\\[\\]]", "");
                 // 仮置きのコマンドと色を設定
-                final String commandToRun = "/extp " + number;
-                final TextColor color = NamedTextColor.WHITE; // 仮置きの色
+                final String commandToRun = "/rsp " + id;
+                TextColor color = NamedTextColor.WHITE; // 仮置きの色
+                if(SpawnPointProfileMap.containsKey(id)) {
+                    SpawnPointProfile profile = SpawnPointProfileMap.get(id);
+                    if(profile.getOwner() != null && profile.isOwned(profile.getOwner())){
+                        color = profile.getOwner().getTeam().color();
+                    }
+                    if(!profile.isEnable()) color = NamedTextColor.GRAY;
+                }
 
                 // クリックイベントとホバーイベントを持つComponentを作成
                 final Component placeholderComponent = Component.text()

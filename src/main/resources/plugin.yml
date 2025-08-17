@@ -2,3 +2,26 @@ name: OneOnOneTeamGameCore
 version: '1.0-SNAPSHOT'
 main: jp.houlab.mochidsuki.oneOnOneTeamGameCore.OneOnOneTeamGameCoreMain
 api-version: '1.20'
+
+commands:
+  rsp:
+    aliases: [ respawntopoint ]
+    description: スポーンポイントにリスポーン
+    permission: OneOnOneTeamGameCore.command.rsp
+    permission-message: Permission denied
+    usage: Banana
+
+  3otgc:
+    aliases: [ 3oteamgamecore ]
+    description: 3Oチームゲームコアコントロールコマンド
+    permission: OneOnOneTeamGameCore.command.3otgc
+    permission-message: Permission denied
+    usage: Banana
+
+
+
+permissions:
+  OneOnOneTeamGameCore.command.rsp:
+    description: RSPコマンド実行権限
+    default: true
+
